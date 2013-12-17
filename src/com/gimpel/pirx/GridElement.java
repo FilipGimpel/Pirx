@@ -2,13 +2,15 @@ package com.gimpel.pirx;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 
 public class GridElement extends View {
 	private int mPositionX;
 	private int mPositionY;
 	private int mColor;
-	private boolean isOccupied;
+	
+	/* Getters and Setters */
 	
 	public int getPositionX() {
 		return mPositionX;
@@ -36,14 +38,12 @@ public class GridElement extends View {
 	}
 
 	public boolean isOccupied() {
-		return isOccupied;
+		Log.d("WTF","WTF");
+		
+		return Colors.Colors.contains(getColor());
 	}
-
-	public void setOccupied(boolean isOccupied) {
-		this.isOccupied = isOccupied;
-	}
-
-
+	
+	/* Constructors */
 
 	public GridElement(Context context) {
 		super(context);
@@ -58,6 +58,12 @@ public class GridElement extends View {
 	}
 	
 	public String getInfo() {
+		return (String) getTag();
+	}
+	
+	/*  */
+	@Override
+	public String toString() {
 		return (String) getTag();
 	}
 }

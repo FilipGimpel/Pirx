@@ -1,17 +1,18 @@
 package com.gimpel.pirx;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Random;
 
 import android.graphics.Color;
-import android.graphics.Point;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
@@ -37,7 +38,7 @@ public class PirxFragment extends Fragment {
 
 	private GridElement[][] mGridViews = new GridElement[GRIDSIZE][GRIDSIZE];
 	private static final int GRIDSIZE = 7;
-	private View mActiveView = null;
+	private GridElement mActiveView = null;
 	private Random mRandom = new Random();
 
 	/**
@@ -72,8 +73,28 @@ public class PirxFragment extends Fragment {
 
 		public void onClick(View v) {
 			GridElement element = (GridElement)v;
-			v.setBackgroundColor(Color.BLUE);
-			Log.d("MAMMA MIA", element.getInfo());	
+			
+			
+			if (mActiveView == null) { // if no grid is currently selected
+				if (element.isOccupied()) { // if we select nonempty grid
+					mActiveView = element;
+					mActiveView.bringToFront();
+					Animation hyperspaceJumpAnimation = AnimationUtils.loadAnimation(getActivity().getBaseContext(), R.anim.pulse);
+					mActiveView.startAnimation(hyperspaceJumpAnimation);
+				}
+			} else { // if a grid is currently selected
+				
+				// 
+				element.setColor(mActiveView.getColor());
+				
+				// deactivate previous active element
+				mActiveView.setColor(Color.WHITE);
+				mActiveView.clearAnimation();
+				mActiveView = null;
+				
+				// add new elements
+				fillRandom(5);
+			}
 		};
 	};
 
@@ -91,10 +112,13 @@ public class PirxFragment extends Fragment {
 	public void fillRandom(int count) {
 		ArrayList<GridElement> emptyGrids = getRandomEmptyGrids(count);
 		
+		Animation fadeIn = new AlphaAnimation(0, 1);
+		fadeIn.setInterpolator(new DecelerateInterpolator()); //add this
+		fadeIn.setDuration(1000);
+		
 		for (GridElement element : emptyGrids) {
-			element.setOccupied(true);
-			element.setBackgroundColor(Color.GREEN);
-			
+			element.setColor(Colors.Colors.get(getRandomInt(0, Colors.Colors.size())));
+			element.startAnimation(fadeIn);
 		}
 	}
 
@@ -106,7 +130,7 @@ public class PirxFragment extends Fragment {
 		ArrayList<GridElement> randomEmptyGrids = new ArrayList<GridElement>();
 		
 		for (int i = 0; i < count; i++) {
-			int rand = getRandomInt(0, randomEmptyGrids.size());
+			int rand = getRandomInt(0, emptyGrids.size());
 			randomEmptyGrids.add(emptyGrids.remove(rand));
 		}
 		
@@ -128,8 +152,14 @@ public class PirxFragment extends Fragment {
 		return emptyGrids;
 	}
 	
+	/**
+	 * 
+	 * @param min
+	 * @param max
+	 * @return returns random int from range [min, max)
+	 */
 	private int getRandomInt(int min, int max) {
-		return mRandom.nextInt(max - min + 1) + min;
+		return mRandom.nextInt(max - min) + min;
 	}
 	
 	/**
@@ -150,7 +180,8 @@ public class PirxFragment extends Fragment {
 			y = getRandomInt(0, GRIDSIZE);
 			
 			if (!mGridViews[x][y].isOccupied()) {
-				mGridViews[x][y].setColor(Colors.blue);
+				mGridViews[x][y].setColor(Colors.Colors.get(getRandomInt(0, Colors.Colors.size())));
+				count--;
 			}
 			
 		}
