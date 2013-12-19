@@ -38,7 +38,7 @@ public class GridElement extends View {
 	}
 
 	public boolean isOccupied() {
-		Log.d("WTF","WTF");
+//		Log.d("WTF","Color contains ? - " + Colors.Colors.contains(getColor()));
 		
 		return Colors.Colors.contains(getColor());
 	}

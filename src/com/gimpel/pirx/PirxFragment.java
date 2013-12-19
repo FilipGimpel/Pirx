@@ -3,21 +3,26 @@ package com.gimpel.pirx;
 import java.util.ArrayList;
 import java.util.Random;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 public class PirxFragment extends Fragment {
-
+	
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 			Bundle savedInstanceState) {
@@ -25,19 +30,39 @@ public class PirxFragment extends Fragment {
 		return inflater.inflate(R.layout.fragment_pirx, container);
 	}
 
+	
 	@Override
 	public void onStart() {
 		super.onStart();
 
+		initializeGridSize();
 		initializeGridArray();
 		initializeGridClickListeners();
-		fillRandom(5);
+		fillRandom(FILLSIZE);
 	}
 
 	/* ---------- Fragments logic ---------- */
 
+	// linear -> frame -> relative
+	
+	private void initializeGridSize() {
+		LinearLayout parentView = (LinearLayout) ((FrameLayout)getView()).getChildAt(0);
+		
+		Context context = getActivity().getBaseContext();
+		WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+		Display display = wm.getDefaultDisplay();
+		
+		int width = display.getWidth()-50;
+		int height = display.getHeight() - 50;
+		int size = width < height ? width : height;
+		
+		parentView.setLayoutParams(new FrameLayout.LayoutParams(size, size));
+		parentView.invalidate();
+	}
+
 	private GridElement[][] mGridViews = new GridElement[GRIDSIZE][GRIDSIZE];
 	private static final int GRIDSIZE = 7;
+	private static final int FILLSIZE = 20;
 	private GridElement mActiveView = null;
 	private Random mRandom = new Random();
 
@@ -83,18 +108,31 @@ public class PirxFragment extends Fragment {
 					mActiveView.startAnimation(hyperspaceJumpAnimation);
 				}
 			} else { // if a grid is currently selected
+				if (!element.isOccupied()) { // if we select nonempty grid
+					// 
+					element.setColor(mActiveView.getColor());
+					
+					// deactivate previous active element
+					mActiveView.setColor(Color.WHITE);
+					mActiveView.clearAnimation();
+					mActiveView = null;
+					
+					// add new elements
+					fillRandom(FILLSIZE);
+					
+					invalidateGrid();
+				} else if (element.equals(mActiveView)) { // if we click again on active element
+					// deactivate active element
+					mActiveView.clearAnimation();
+					mActiveView = null;
+				}
 				
-				// 
-				element.setColor(mActiveView.getColor());
-				
-				// deactivate previous active element
-				mActiveView.setColor(Color.WHITE);
-				mActiveView.clearAnimation();
-				mActiveView = null;
-				
-				// add new elements
-				fillRandom(5);
 			}
+		}
+
+		private void invalidateGrid() {
+			// TODO Auto-generated method stub
+			
 		};
 	};
 
@@ -120,6 +158,8 @@ public class PirxFragment extends Fragment {
 			element.setColor(Colors.Colors.get(getRandomInt(0, Colors.Colors.size())));
 			element.startAnimation(fadeIn);
 		}
+		
+		Log.d("LAKUKARACZA","EHEHE");
 	}
 
 	/**
@@ -130,10 +170,22 @@ public class PirxFragment extends Fragment {
 		ArrayList<GridElement> randomEmptyGrids = new ArrayList<GridElement>();
 		
 		for (int i = 0; i < count; i++) {
-			int rand = getRandomInt(0, emptyGrids.size());
-			randomEmptyGrids.add(emptyGrids.remove(rand));
+			if (emptyGrids.size() != 0) { // if we still have any empty girds
+				// lets fill them with elements
+				int rand = getRandomInt(0, emptyGrids.size());
+				randomEmptyGrids.add(emptyGrids.remove(rand));	
+			} else {
+				// otherwise the game is finished!
+				Context context = getActivity().getBaseContext();
+				CharSequence text = "YOU LOSE BITCH !";
+				int duration = Toast.LENGTH_LONG;
+
+				Toast toast = Toast.makeText(context, text, duration);
+				toast.show();				
+			}
+				
 		}
-		
+
 		return randomEmptyGrids;
 	}
 
@@ -145,7 +197,7 @@ public class PirxFragment extends Fragment {
 		
 		for (int i = 0; i < GRIDSIZE; i++) {
 			for (int j = 0; j < GRIDSIZE; j++) {
-				emptyGrids.add(mGridViews[i][j]);
+				if (!mGridViews[i][j].isOccupied()) emptyGrids.add(mGridViews[i][j]);
 			}
 		}
 		
@@ -170,12 +222,16 @@ public class PirxFragment extends Fragment {
 	 * colours them, if not, looks for another. 
 	 * 
 	 * This approach results in more readable code.
+	 * 
+	 * (later: not really, when we have last empty grid 
+	 * there will be chance 1/Gridsize**2 that random grid
+	 * will be the one we are looking for, dumb method)
 	 */
 	public void fillRandom_2(int count) {
 		int x;
 		int y;
 		
-		while(count > 0) {
+		while(count > 0 && getEmptyGrids().size() > 0) {
 			x = getRandomInt(0, GRIDSIZE);
 			y = getRandomInt(0, GRIDSIZE);
 			
