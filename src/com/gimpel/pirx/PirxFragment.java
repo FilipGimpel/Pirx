@@ -15,8 +15,11 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
+import android.view.animation.AnimationSet;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.ScaleAnimation;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -43,8 +46,6 @@ public class PirxFragment extends Fragment {
 
 	/* ---------- Fragments logic ---------- */
 
-	// linear -> frame -> relative
-	
 	private void initializeGridSize() {
 		LinearLayout parentView = (LinearLayout) ((FrameLayout)getView()).getChildAt(0);
 		
@@ -52,8 +53,8 @@ public class PirxFragment extends Fragment {
 		WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
 		Display display = wm.getDefaultDisplay();
 		
-		int width = display.getWidth()-50;
-		int height = display.getHeight() - 50;
+		int width = display.getWidth();
+		int height = display.getHeight();
 		int size = width < height ? width : height;
 		
 		parentView.setLayoutParams(new FrameLayout.LayoutParams(size, size));
@@ -62,7 +63,7 @@ public class PirxFragment extends Fragment {
 
 	private GridElement[][] mGridViews = new GridElement[GRIDSIZE][GRIDSIZE];
 	private static final int GRIDSIZE = 7;
-	private static final int FILLSIZE = 20;
+	private static final int FILLSIZE = 3;
 	private GridElement mActiveView = null;
 	private Random mRandom = new Random();
 
@@ -99,7 +100,6 @@ public class PirxFragment extends Fragment {
 		public void onClick(View v) {
 			GridElement element = (GridElement)v;
 			
-			
 			if (mActiveView == null) { // if no grid is currently selected
 				if (element.isOccupied()) { // if we select nonempty grid
 					mActiveView = element;
@@ -129,21 +129,148 @@ public class PirxFragment extends Fragment {
 				
 			}
 		}
-
-		private void invalidateGrid() {
-			// TODO Auto-generated method stub
-			
-		};
 	};
 
-	public void onPlayerAction() {
+	/**
+	 * Split into separate methods
+	 */
+	public void invalidateGrid() {
+		
+		// horizontal
+		for (int i = 0; i < GRIDSIZE; i++) {
+			for (int j = 0; j < GRIDSIZE - 3; j++) {
+				if (mGridViews[i][j].getColor() == mGridViews[i][j+1].getColor() && 
+				mGridViews[i][j+1].getColor() == mGridViews[i][j+2].getColor() &&
+				mGridViews[i][j+2].getColor() == mGridViews[i][j+3].getColor() && 
+				mGridViews[i][j+2].getColor() != 0) {
+					
+				removeAndAnimateGrids(
+						mGridViews[i][j],
+						mGridViews[i][j+1],
+						mGridViews[i][j+2],
+						mGridViews[i][j+3]
+					);
+				}
+			}
+		}
+		
+		// vertical
+		for (int i = 0; i < GRIDSIZE - 3; i++) {
+			for (int j = 0; j < GRIDSIZE; j++) {
+				if (mGridViews[i][j].getColor() == mGridViews[i+1][j].getColor() && 
+				mGridViews[i+1][j].getColor() == mGridViews[i+2][j].getColor() &&
+				mGridViews[i+2][j].getColor() == mGridViews[i+3][j].getColor() && 
+				mGridViews[i+3][j].getColor() != 0) {
+					
+				removeAndAnimateGrids(
+						mGridViews[i][j],
+						mGridViews[i+1][j],
+						mGridViews[i+2][j],
+						mGridViews[i+3][j]
+					);
+				}
+			}
+		}
+		
+		// oblique descending right
+		for (int i = 0; i < GRIDSIZE - 3; i++) {
+			for (int j = 0; j < GRIDSIZE - 3; j++) {
+				if (mGridViews[i][j].getColor() == mGridViews[i+1][j+1].getColor() && 
+				mGridViews[i+1][j+1].getColor() == mGridViews[i+2][j+2].getColor() &&
+				mGridViews[i+2][j+2].getColor() == mGridViews[i+3][j+3].getColor() && 
+				mGridViews[i+3][j+3].getColor() != 0) {
 
+				removeAndAnimateGrids(
+						mGridViews[i][j],
+						mGridViews[i+1][j+1],
+						mGridViews[i+2][j+2],
+						mGridViews[i+3][j+3]
+					);
+				}		
+			}
+		}
+		
+		// oblique ascending right
+		for (int i = 0; i < GRIDSIZE - 3; i++) {
+			for (int j = 0; j < GRIDSIZE - 3; j++) {
+				if (mGridViews[i+3][j].getColor() == mGridViews[i+2][j+1].getColor() && 
+				mGridViews[i+2][j+1].getColor() == mGridViews[i+1][j+2].getColor() &&
+				mGridViews[i+1][j+2].getColor() == mGridViews[i][j+3].getColor() && 
+				mGridViews[i][j+3].getColor() != 0) {
+					
+				removeAndAnimateGrids(
+						mGridViews[i+3][j], 
+						mGridViews[i+2][j+1],
+						mGridViews[i+1][j+2],
+						mGridViews[i][j+3]
+					);
+				}		
+			}
+		}
 	}
 
-	public void onGameAction() {
+	/**
+	 * @param grids x1, y1, x2, y2... itd coordinates of points that we want to remove
+	 * logically, there must be a odd number of arguments
+	 * 
+	 * TODO DO IT USING PROPERTY ANIMATOR
+	 */
+	private void removeAndAnimateGrids(GridElement... grids) {
+			
+			// fading
+			AlphaAnimation fadeInAnimation = new AlphaAnimation(0, 1);
+			fadeInAnimation.setInterpolator(new DecelerateInterpolator()); //add this
+			
+			// scaling
+			ScaleAnimation scaleAnimation = new ScaleAnimation(
+					1, 2, 1, 2, 
+					Animation.RELATIVE_TO_SELF, (float)0.5,
+					Animation.RELATIVE_TO_SELF, (float)0.5
+				);
+						
+			// Put the animations together
+			AnimationSet set = new AnimationSet(false);
+			set.setDuration(2000);
+			set.addAnimation(fadeInAnimation);
+			set.addAnimation(scaleAnimation);
+			set.setAnimationListener(new AnimationListener() {
+				
+				GridElement[] mColorReverseCallbacks;
+				
+				/**
+				 * Method used to pass arguments to anonymous class 
+				 * in an elegant way
+				 */
+				public AnimationListener init(GridElement... elements) {
+					mColorReverseCallbacks = elements;
+					return this;
+				}
+				
+				@Override
+				public void onAnimationEnd(Animation animation) {
+					for (GridElement element : mColorReverseCallbacks) {
+						element.setColor(Color.WHITE);
+					}
+				}
 
+
+				@Override
+				public void onAnimationRepeat(Animation animation) {
+					// nothing to do					
+				}
+				
+				@Override
+				public void onAnimationStart(Animation animation) {
+					// nothing to do
+				}
+				
+			}.init(grids));
+			
+			for (GridElement gridElement : grids) {
+				gridElement.setAnimation(set);
+			}
 	}
-
+	
 	/**
 	 * Fills grid with random colors
 	 */

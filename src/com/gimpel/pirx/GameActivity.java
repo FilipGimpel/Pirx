@@ -9,6 +9,5 @@ public class GameActivity extends android.support.v4.app.FragmentActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_pirx);
-
 	}
 }
